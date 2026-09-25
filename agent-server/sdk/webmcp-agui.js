@@ -59,25 +59,31 @@ export function implementSpec(spec, handlers) {
 }
 
 // Human-in-the-loop enforced by the host, not by the model. The agent is told
-// to ask before writing, but a prompt-injected model might not; this makes the
-// write tool refuse anything a human didn't approve, exactly as approved.
+// to ask before acting, but a prompt-injected model might not; this makes the
+// write tool refuse anything the user didn't confirm, exactly as confirmed, once.
+//
+//   confirm tool: return gate.record(`${id}:${action}`, confirmed, params)
+//   write tool:   gate.consume(`${id}:${action}`, params)
 export function createApprovalGate() {
   const approved = new Map();
-  const fingerprint = (change) => JSON.stringify({ description: change?.description ?? null, tags: change?.tags ?? null });
   return {
-    record(id, decision, proposed) {
-      if (decision.approved) approved.set(id, fingerprint(decision.final ?? proposed));
-      else approved.delete(id);
-      return decision;
+    record(key, confirmed, value) {
+      if (confirmed) approved.set(key, stableJson(value));
+      else approved.delete(key);
     },
-    consume(id, patch) {
-      if (approved.get(id) !== fingerprint(patch)) {
-        throw new Error(`Refused: no human approval on record for this exact change to ${id}. Call request_approval first and persist exactly what was approved.`);
+    consume(key, value) {
+      if (approved.get(key) !== stableJson(value)) {
+        throw new Error(`Refused: the customer has not confirmed "${key}" with these exact parameters. Call confirm_action first and pass exactly the params it returned.`);
       }
-      approved.delete(id);
+      approved.delete(key);
     },
   };
 }
+
+const stableJson = (v) =>
+  JSON.stringify(v ?? {}, (_k, x) =>
+    x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x,
+  );
 
 export function checkConformance(spec) {
   const have = new Set(registry.keys());

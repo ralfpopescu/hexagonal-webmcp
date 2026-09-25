@@ -1,69 +1,131 @@
 // Deterministic stand-in for the LLM so the demo runs with no API key.
 // It speaks exactly the same AG-UI protocol as the Claude brain: it looks at
-// the conversation so far, decides the next tool call, streams it, and ends
-// the run. Copy is template-generated from the product's attributes.
+// the conversation so far, picks the next tool call, streams it, and ends the
+// run. Intent comes from keywords; wording comes from the host's context.
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const MAX_PER_REQUEST = 3;
+
+const INTENTS = [
+  ['reschedule_install', /reschedul|engineer|install|appointment/],
+  ['change_address', /address/],
+  ['return', /return|refund|send (it|them) back/],
+  ['pause', /pause|holiday|away/],
+  ['change_plan', /upgrade|faster|speed|change (my )?plan/],
+  ['cancel', /cancel/],
+  ['status', /./],
+];
+
+// Which purchase states each intent most plausibly refers to, best first.
+const PREFERRED = {
+  status: ['shipped', 'processing', 'pending', 'active'],
+  cancel: ['processing', 'active', 'pending'],
+  change_address: ['processing'],
+  return: ['delivered'],
+  pause: ['active'],
+  change_plan: ['active'],
+  reschedule_install: ['pending'],
+};
 
 export async function mockBrain({ messages, context, ui }) {
   const lastUser = messages.findLastIndex((m) => m.role === 'user');
+  const text = String(messages[lastUser]?.content ?? '').toLowerCase();
+  const intent = INTENTS.find(([, re]) => re.test(text))[0];
   const calls = collectToolCalls(messages.slice(lastUser + 1));
   const last = calls.at(-1);
-  const voice = voiceFrom(context);
+  const v = voice(context);
 
   if (!last) {
-    await say(ui, 'Scanning the catalog for products with missing or thin copy…');
-    return call(ui, 'search_products', { query: '', only_missing_copy: true, limit: 10 });
+    await say(ui, v.start);
+    return call(ui, 'list_purchases', { include_closed: true });
   }
+  if (last.result?.error) return say(ui, v.error(last.result.error));
 
-  const candidates = (calls.findLast((c) => c.name === 'search_products')?.result?.products ?? []).slice(0, MAX_PER_REQUEST);
-  const finished = new Set(
-    calls
-      .filter((c) => c.name === 'show_product_card' || (c.name === 'request_approval' && !c.result?.approved))
-      .map((c) => c.args.id),
-  );
-
-  const next = async (prefix = '') => {
-    const product = candidates.find((p) => !finished.has(p.id));
-    if (!product) return summarize(ui, calls, candidates);
-    await say(ui, `${prefix}Drafting copy for “${product.title}”.`);
-    return call(ui, 'get_product', { id: product.id });
-  };
+  const purchases = calls.find((c) => c.name === 'list_purchases')?.result?.purchases ?? [];
 
   switch (last.name) {
-    case 'search_products':
-      if (!candidates.length) return say(ui, 'Every product already has solid copy. Nothing to enrich.');
-      await say(ui, `Found ${last.result.products.length} product(s) needing copy. I'll work through ${candidates.length}.\n`);
-      return next();
-
-    case 'get_product': {
-      const product = last.result;
-      return call(ui, 'request_approval', {
-        id: product.id,
-        proposed: enrich(product, voice),
-        rationale: voice === 'technical'
-          ? 'Spec-first copy built only from the recorded attributes, per the technical style guide.'
-          : 'Warm, sensory copy drawn from the product details, per the brand voice guide.',
-      });
+    case 'list_purchases': {
+      const target = pickTarget(purchases, intent, text);
+      if (!target) return say(ui, v.nothing);
+      if (intent === 'status') return call(ui, 'show_purchase_card', { id: target.id, note: target.summary });
+      await say(ui, v.checking(target.title));
+      return call(ui, 'get_available_actions', { id: target.id });
     }
 
-    case 'request_approval':
-      if (last.result?.approved) {
-        const patch = last.result.final ?? last.args.proposed;
-        return call(ui, 'update_product', { id: last.args.id, patch });
+    case 'get_available_actions': {
+      const id = last.args.id;
+      const ok = last.result.available?.find((a) => a.action === intent);
+      if (ok) return call(ui, 'confirm_action', { id, action: intent, summary: ok.note ? `${ok.label}. ${ok.note}` : ok.label });
+      const no = last.result.unavailable?.find((a) => a.action === intent);
+      await say(ui, v.unavailable(no?.reason ?? v.notOffered));
+      return call(ui, 'show_purchase_card', { id, note: no?.reason ?? '' });
+    }
+
+    case 'confirm_action':
+      if (!last.result?.confirmed) return say(ui, v.declined);
+      return call(ui, 'perform_action', { id: last.args.id, action: last.args.action, params: last.result.params ?? {} });
+
+    case 'perform_action':
+      return call(ui, 'show_purchase_card', { id: last.args.id, note: last.result.message });
+
+    case 'show_purchase_card': {
+      const before = calls.at(-2);
+      if (before?.name === 'perform_action') return say(ui, v.done(before.result.message));
+      if (before?.name === 'list_purchases') {
+        const p = purchases.find((x) => x.id === last.args.id);
+        return say(ui, v.status(p));
       }
-      return next('Skipped that one. ');
-
-    case 'update_product':
-      return call(ui, 'show_product_card', { id: last.args.id, note: 'Enriched and saved.' });
-
-    case 'show_product_card':
-      return next();
+      return undefined;
+    }
 
     default:
-      return say(ui, `I called ${last.name} but I don't know what to do with it in mock mode.`);
+      return say(ui, `I called ${last.name}, but mock mode doesn't know what to do next.`);
   }
+}
+
+function pickTarget(purchases, intent, text) {
+  const words = new Set(text.split(/[^a-z0-9]+/).filter(Boolean));
+  const pref = PREFERRED[intent] ?? [];
+  let best = null;
+  purchases.forEach((p, i) => {
+    let score = 0;
+    const id = p.id.toLowerCase().replace(/^#/, '');
+    if (text.includes(id)) score += 10;
+    for (const tok of `${p.title} ${p.kind}`.toLowerCase().split(/[^a-z0-9]+/)) {
+      if (tok.length >= 2 && [...words].some((w) => w === tok || (tok.length > 3 && w.startsWith(tok)))) score += 2;
+    }
+    const rank = pref.indexOf(p.status);
+    if (rank !== -1) score += 1 + (pref.length - rank) * 0.25;
+    score -= i * 0.01; // newest first wins ties
+    if (!best || score > best.score) best = { p, score };
+  });
+  return best?.p;
+}
+
+function voice(context) {
+  const formal = JSON.stringify(context).toLowerCase().includes('formal');
+  return formal
+    ? {
+        start: "Certainly. I'm retrieving the services on your account.",
+        checking: (t) => `I'm checking which changes are available for ${t}.`,
+        unavailable: (r) => `I'm sorry, that isn't possible. ${r}`,
+        notOffered: 'That change is not offered for this service.',
+        declined: 'Understood. No changes have been made to your account.',
+        done: (m) => `That's complete. ${m}`,
+        status: (p) => `${p.title}: ${p.summary}.`,
+        nothing: 'I could not find any services on your account.',
+        error: (e) => `I'm sorry, something went wrong: ${e}`,
+      }
+    : {
+        start: 'On it! Pulling up your orders 👟',
+        checking: (t) => `Checking what I can do with your ${t}…`,
+        unavailable: (r) => `Ah, no can do. ${r}`,
+        notOffered: "That's not something I can do for this order.",
+        declined: 'No worries, nothing changed.',
+        done: (m) => `Done! ${m}`,
+        status: (p) => `Your ${p.title}: ${p.summary}.`,
+        nothing: "I couldn't find any orders on your account.",
+        error: (e) => `Hmm, something broke: ${e}`,
+      };
 }
 
 function collectToolCalls(turn) {
@@ -83,55 +145,10 @@ function collectToolCalls(turn) {
   return calls;
 }
 
-async function summarize(ui, calls, candidates) {
-  const saved = calls.filter((c) => c.name === 'update_product' && c.result?.ok).length;
-  const skipped = calls.filter((c) => c.name === 'request_approval' && !c.result?.approved).length;
-  await say(ui, `Done. ${saved} of ${candidates.length} product(s) enriched${skipped ? `, ${skipped} skipped` : ''}.`);
-}
-
-// --- template "enrichment" -------------------------------------------------
-
-function voiceFrom(context) {
-  const text = JSON.stringify(context).toLowerCase();
-  return text.includes('technical') ? 'technical' : 'warm';
-}
-
-function enrich(product, voice) {
-  const a = product.attributes ?? {};
-  const facts = Object.entries(a).filter(([k, v]) => v !== '' && v != null && !['price', 'vendor', 'status', 'classification', 'product_type'].includes(k));
-
-  if (voice === 'technical') {
-    const spec = facts.map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join('; ');
-    return {
-      description: `${product.title}. ${spec}.`,
-      tags: unique([
-        ...product.title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2),
-        ...(a.material ? [String(a.material).toLowerCase()] : []),
-      ]).slice(0, 6),
-    };
-  }
-
-  const name = product.title.split('—')[0].trim().toLowerCase();
-  const bits = [];
-  if (a.scent_notes) bits.push(`Notes of ${a.scent_notes}.`);
-  if (a.material) bits.push(`Made from ${a.material}.`);
-  if (a.finish) bits.push(`Finished in a ${a.finish}.`);
-  if (a.burn_time_hours) bits.push(`Around ${a.burn_time_hours} hours of slow, even burn.`);
-  if (a.care) bits.push(`Care: ${a.care}.`);
-  return {
-    description: `Meet the ${name}. ${bits.slice(0, 3).join(' ')} A small, everyday ritual, made to last.`.replace(/\s+/g, ' ').trim(),
-    tags: unique([
-      ...(a.product_type ? [String(a.product_type).toLowerCase()] : []),
-      ...String(a.material ?? '').toLowerCase().split(/,\s*/).filter(Boolean),
-      'giftable',
-    ]).slice(0, 5),
-  };
-}
-
 // --- streaming helpers -----------------------------------------------------
 
 async function say(ui, text) {
-  for (const chunk of text.match(/.{1,6}/gs) ?? []) {
+  for (const chunk of text.match(/.{1,6}/gsu) ?? []) {
     ui.textDelta(chunk);
     await sleep(12);
   }
@@ -141,14 +158,13 @@ let seq = 0;
 async function call(ui, name, args) {
   const id = `mock_call_${Date.now().toString(36)}_${seq++}`;
   ui.toolStart(id, name);
-  for (const chunk of JSON.stringify(args).match(/.{1,24}/gs) ?? []) {
+  for (const chunk of JSON.stringify(args).match(/.{1,24}/gsu) ?? []) {
     ui.toolArgs(id, chunk);
     await sleep(8);
   }
   ui.toolEnd(id);
 }
 
-const unique = (xs) => [...new Set(xs)];
 function parse(s) {
   try {
     return typeof s === 'string' ? JSON.parse(s) : s;

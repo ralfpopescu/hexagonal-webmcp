@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Norvik Fibre · My account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <aside class="side">
+    <div class="logo"><span class="wave">≋</span> norvik <b>fibre</b></div>
+    <nav>
+      <a class="active">Overview</a><a>Services</a><a>Bills &amp; payments</a><a>Moving home</a><a>Help &amp; support</a>
+    </nav>
+    <div class="side-foot">Signed in via Norvik ID<br /><span id="acct">…</span></div>
+  </aside>
+
+  <main class="main">
+    <div class="crumb">My account › Overview</div>
+    <h1 id="greeting">Welcome back</h1>
+    <p class="note">Services are loaded over JSON-RPC with this portal's bearer token · <code>POST /rpc account.get</code></p>
+    <h2>Your services</h2>
+    <div id="services" class="services"></div>
+  </main>
+
+  <section class="assistant">
+    <header class="a-head">
+      <div>
+        <div class="a-title">Norvik Assistant</div>
+        <div class="a-sub" id="agent-status">Connecting…</div>
+      </div>
+      <button id="toggle-events" class="a-btn">Event log</button>
+    </header>
+    <div class="a-disclaimer">AI assistant. Changes to your account always require your confirmation.</div>
+    <div id="chat" class="chat">
+      <div class="msg agent">Good afternoon, Alex. I can help with plan changes, holiday pauses, engineer appointments and cancellations. How can I help?</div>
+    </div>
+    <div class="suggest">
+      <button data-prompt="Upgrade my broadband">Upgrade my broadband</button>
+      <button data-prompt="Pause my broadband while I'm away">Pause my broadband</button>
+      <button data-prompt="Can I pause my TV?">Pause my TV?</button>
+      <button data-prompt="Reschedule my engineer visit">Reschedule engineer visit</button>
+      <button data-prompt="Cancel my TV package">Cancel my TV package</button>
+    </div>
+    <form id="composer" class="composer">
+      <input id="prompt" placeholder="Type your question" autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
+  </section>
+
+  <div id="events" class="events hidden">
+    <div class="events-head">AG-UI event stream (from the shared agent endpoint)</div>
+    <pre id="event-log"></pre>
+  </div>
+
+  <dialog id="confirm" class="confirm"></dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

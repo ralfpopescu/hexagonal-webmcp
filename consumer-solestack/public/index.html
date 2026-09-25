@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solestack · My orders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="promo">free returns within 30 days · limited drops are final sale ⚡</div>
+  <header class="top">
+    <div class="logo">sole<span>stack</span></div>
+    <nav><a>New</a><a>Running</a><a>Court</a><a>Trail</a><a class="hot">Drops</a></nav>
+    <div class="me" id="me">…</div>
+  </header>
+
+  <main class="page">
+    <h1>Your orders</h1>
+    <p class="sub">Loaded from this store's own API with your login cookie · <code>/api/storefront/orders</code></p>
+    <div id="orders" class="orders"></div>
+  </main>
+
+  <section id="widget" class="widget">
+    <header class="w-head">
+      <div class="w-avatar">👟</div>
+      <div>
+        <div class="w-title">Solestack help</div>
+        <div class="w-sub" id="agent-status">connecting…</div>
+      </div>
+      <button id="toggle-events" class="w-icon" title="Show raw AG-UI events">{ }</button>
+      <button id="close" class="w-icon" title="Minimize">–</button>
+    </header>
+    <div id="chat" class="chat">
+      <div class="bubble agent">Hey Jamie! I can track, cancel, return, or change the address on your orders. What's up?</div>
+    </div>
+    <div class="chips">
+      <button data-prompt="Where's my order?">📦 Where's my order?</button>
+      <button data-prompt="Change the address on my order">🏠 Change address</button>
+      <button data-prompt="Cancel my latest order">✖️ Cancel latest order</button>
+      <button data-prompt="Return the Trail Hikers">↩️ Return the Trail Hikers</button>
+      <button data-prompt="Can I return my Neon Hi-Tops?">⚡ Return the Neon Hi-Tops?</button>
+    </div>
+    <form id="composer" class="composer">
+      <input id="prompt" placeholder="Type a message…" autocomplete="off" />
+      <button type="submit">↑</button>
+    </form>
+  </section>
+  <button id="launcher" class="launcher hidden">💬</button>
+
+  <div id="events" class="events hidden">
+    <div class="events-head">AG-UI event stream <span>(from the shared agent endpoint)</span></div>
+    <pre id="event-log"></pre>
+  </div>
+
+  <dialog id="sheet" class="sheet"></dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

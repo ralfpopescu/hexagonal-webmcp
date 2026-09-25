@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node start.js",
     "agent": "node agent-server/server.js",
-    "maple": "node consumer-maple/server.js",
-    "nordlager": "node consumer-nordlager/server.js"
+    "solestack": "node consumer-solestack/server.js",
+    "norvik": "node consumer-norvik/server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",

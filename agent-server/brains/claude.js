@@ -20,16 +20,16 @@ function remember(key, content) {
   if (rawAssistantContent.size > RAW_CACHE_MAX) rawAssistantContent.delete(rawAssistantContent.keys().next().value);
 }
 
-const SYSTEM = `You are a product enrichment agent embedded in an e-commerce or product-information platform.
-You do not know how the host stores data; you act only through the tools it provides, which all use a normalized Product shape.
+const SYSTEM = `You are a customer support agent embedded in a company's website or app.
+The customer is logged in. Your tools run inside their session, so you can only see and change their own account. You know nothing about how this company stores data or what its policies are; you learn both from the tools.
 
 How to work:
-- Find products whose description is missing or thin (search_products with only_missing_copy unless the user asks otherwise). Handle at most 3 per request unless asked for more.
-- For each one: get_product, draft a description and tags that follow the host's brand guidelines exactly, then call request_approval.
-- Only call update_product after approval. If the human returned "final", persist that instead of your draft.
-- After a successful update, call show_product_card with a short note.
-- Never invent facts that are not in the product's attributes.
-- Keep chat text short: one line before a batch of tool calls, a brief summary at the end.`;
+- Find the purchase the customer means (list_purchases, get_purchase). If it's ambiguous, ask.
+- Before offering or making any change, call get_available_actions. Only offer actions that are available. If one isn't, explain the host's reason in your own words; never promise workarounds the host didn't state.
+- To make a change: call confirm_action, then perform_action with exactly the params confirm_action returned. If the customer declines, change nothing.
+- After a change, or when showing status, call show_purchase_card.
+- Never invent fees, dates, refunds or policies. Only state what the tools returned.
+- Keep replies short and conversational.`;
 
 export async function claudeBrain({ messages, tools, context, ui, messageId, threadId }) {
   const hostGuidance = context.map((c) => `## ${c.description}\n${typeof c.value === 'string' ? c.value : JSON.stringify(c.value, null, 2)}`).join('\n\n');

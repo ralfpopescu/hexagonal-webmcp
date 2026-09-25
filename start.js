@@ -3,8 +3,8 @@ import { spawn } from 'node:child_process';
 
 const procs = [
   ['agent', 'agent-server/server.js', '\x1b[35m'],
-  ['maple', 'consumer-maple/server.js', '\x1b[33m'],
-  ['nordlager', 'consumer-nordlager/server.js', '\x1b[36m'],
+  ['solestack', 'consumer-solestack/server.js', '\x1b[33m'],
+  ['norvik', 'consumer-norvik/server.js', '\x1b[36m'],
 ].map(([name, file, color]) => {
   const p = spawn(process.execPath, [file], { env: process.env });
   const prefix = `${color}${name.padEnd(9)}\x1b[0m│ `;
@@ -17,8 +17,8 @@ const procs = [
 });
 
 setTimeout(() => {
-  console.log('\n  Maple & Co. (DTC storefront)   → http://localhost:3001');
-  console.log('  NORDLAGER PIM (industrial B2B) → http://localhost:3002');
+  console.log('\n  Solestack (sneaker store)       → http://localhost:3001');
+  console.log('  Norvik Fibre (broadband portal) → http://localhost:3002');
   console.log('  Shared agent spec               → http://localhost:4000/spec\n');
 }, 600);
 
