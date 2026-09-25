@@ -3,14 +3,28 @@
 //
 //   import { modelContext, implementSpec, AgentSession } from '<agent>/sdk/webmcp-agui.js'
 //
-// 1. WebMCP: a minimal `navigator.modelContext` polyfill (registerTool / provideContext).
+// 1. WebMCP: a minimal `document.modelContext` polyfill (registerTool / provideContext).
+//    If the browser has native WebMCP, tools are also registered there, so browser
+//    agents can use the same tools the shared agent does.
 // 2. AG-UI client: POSTs RunAgentInput, parses the SSE event stream, executes any
 //    tool calls against the registered WebMCP tools *in this page*, appends the
 //    results as `tool` messages, and starts the next run until the agent stops.
 
 // ---------------------------------------------------------------- WebMCP ----
 
+// The SDK keeps its own registry because it has to enumerate tools to send them
+// over AG-UI, and the native API doesn't expose a page's tools back to the page.
 const registry = new Map();
+
+// Native WebMCP, if present. `navigator.modelContext` is the deprecated name.
+const native = globalThis.document?.modelContext ?? globalThis.navigator?.modelContext ?? null;
+const mirror = (fn) => {
+  try {
+    fn();
+  } catch {
+    /* native registration is a bonus; the shared agent works without it */
+  }
+};
 
 export const modelContext = {
   registerTool(tool) {
@@ -18,13 +32,15 @@ export const modelContext = {
       throw new TypeError('registerTool: `name` and `execute()` are required');
     }
     registry.set(tool.name, tool);
-    return { unregister: () => registry.delete(tool.name) };
+    if (native) mirror(() => native.registerTool(tool));
+    return { unregister: () => this.unregisterTool(tool.name) };
   },
   unregisterTool(name) {
     registry.delete(name);
+    if (native) mirror(() => native.unregisterTool(name));
   },
   provideContext({ tools = [] } = {}) {
-    registry.clear();
+    [...registry.keys()].forEach((name) => this.unregisterTool(name));
     tools.forEach((t) => this.registerTool(t));
   },
   listTools() {
@@ -32,11 +48,14 @@ export const modelContext = {
   },
 };
 
-if (typeof navigator !== 'undefined' && !navigator.modelContext) {
-  try {
-    Object.defineProperty(navigator, 'modelContext', { value: modelContext, configurable: true });
-  } catch {
-    /* read-only navigator: fine, use the export */
+if (!native) {
+  for (const host of [globalThis.document, globalThis.navigator]) {
+    if (!host) continue;
+    try {
+      Object.defineProperty(host, 'modelContext', { value: modelContext, configurable: true });
+    } catch {
+      /* read-only host object: fine, use the export */
+    }
   }
 }
 

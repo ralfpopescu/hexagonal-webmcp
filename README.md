@@ -12,7 +12,7 @@ backend, in the user's own logged-in session.
 It's built on two open protocols:
 
 - **[AG-UI](https://docs.ag-ui.com)**: a streaming event protocol between an agent and a frontend.
-- **[WebMCP](https://github.com/webmachinelearning/webmcp)**: a proposal for web pages to expose tools to agents (`navigator.modelContext`).
+- **[WebMCP](https://github.com/webmachinelearning/webmcp)**: a W3C Community Group spec for web pages to expose tools to agents (`document.modelContext`).
 
 The agent has **no tools of its own** and knows nothing about any platform. When it wants
 to act, it emits a tool call over AG-UI, and the host page resolves it with its own code,
@@ -226,12 +226,48 @@ In-app customer support meets every one of these, which is why it's the demo.
 
 ---
 
+## Prior art, and what's new here
+
+The plumbing isn't new, and this project builds directly on it:
+
+- **[AG-UI frontend tools](https://docs.ag-ui.com/concepts/tools).** The frontend declares
+  tools in `RunAgentInput.tools`, the agent decides when to call them, and they run in the
+  browser. Microsoft Agent Framework, Agno, CopilotKit and others support it. This repo's
+  transport is exactly this.
+- **[OpenAI ChatKit client tools](https://platform.openai.com/docs/guides/custom-chatkit).**
+  The same idea in OpenAI's stack: a backend agent hands tasks to handlers in the user's
+  browser.
+- **[WebMCP](https://github.com/webmachinelearning/webmcp).** The browser API for a page to
+  register tools. [CopilotKit](https://www.copilotkit.ai/blog/introducing-webmcp-for-copilotkit)
+  exposes its frontend tools through WebMCP, and an
+  [open pull request](https://github.com/CopilotKit/CopilotKit/pull/6873) imports a page's
+  WebMCP tools into CopilotKit agents as frontend tools. That's the same bridge this SDK
+  hand-rolls.
+- **[webmcp-bridge](https://github.com/searchbox-labs/webmcp-bridge).** A prototype for
+  exposing a page's WebMCP tools to an agent running outside the browser, with the page
+  keeping execution authority.
+
+In all of these, **the agent uses whatever tools the page happens to have.** What this
+project adds is the other direction of ownership:
+
+1. **The agent owns the contract.** It publishes a versioned spec, many unrelated hosts
+   implement it, and runs that don't conform are refused. That's what makes one agent
+   shareable across companies instead of wired to one app.
+2. **Hosts own policy.** `get_available_actions` keeps business rules in the host, so the
+   agent never learns anyone's return window or fees.
+3. **Hosts enforce confirmation.** The approval gate makes host code, not the prompt,
+   decide whether a write happens.
+4. **The architectural framing.** Ports and adapters as the model for sharing one agent
+   across teams and companies.
+
+---
+
 ## How a run works
 
 ```
 Host page                                   Support agent
 ─────────                                   ─────────────
-navigator.modelContext.registerTool(...) ×6
+document.modelContext.registerTool(...) ×6
 POST /agent  {messages, tools, context}  ─▶ validate tools ⊇ spec
                                             model call
           ◀─ RUN_STARTED
@@ -418,8 +454,10 @@ pin it with Subresource Integrity) so hosts decide when to upgrade.
 
 This is a proof of concept, not production code.
 
-- `navigator.modelContext` is **polyfilled**. The SDK keeps its own registry because the
-  page has to enumerate its tools to send them over AG-UI.
+- `document.modelContext` is **polyfilled** when the browser doesn't have WebMCP. When it
+  does (Chrome's origin trial), the SDK also registers the tools natively, so browser agents
+  can use the same tools. The SDK keeps its own registry either way, because the page has
+  to enumerate its tools to send them over AG-UI.
 - The server checks tool **names** against the spec and substitutes its own schemas.
   It does not yet validate tool **results** against `spec.tools[].returns`.
 - The mock brain understands a handful of keyword intents. Use Claude for real

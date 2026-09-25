@@ -1,4 +1,4 @@
-import { AgentSession, fetchSpec } from 'http://localhost:4000/sdk/webmcp-agui.js';
+import { AgentSession, fetchSpec, modelContext } from 'http://localhost:4000/sdk/webmcp-agui.js';
 import { installTools, rpc } from './webmcp.js';
 
 const AGENT_URL = 'http://localhost:4000';
@@ -195,7 +195,7 @@ await refresh();
 
 const spec = await fetchSpec(AGENT_URL);
 const conformance = installTools(spec, { refresh, confirmModal, showServiceCard });
-console.log('[norvik] WebMCP conformance', conformance, navigator.modelContext.listTools());
+console.log('[norvik] WebMCP conformance', conformance, modelContext.listTools());
 $('#agent-status').textContent = conformance.ok ? `Shared agent · spec v${spec.version}` : `Missing: ${conformance.missing.join(', ')}`;
 
 const session = new AgentSession({

@@ -35,7 +35,7 @@ export const SPEC = {
   version: '1.0.0',
   description:
     'In-app customer support agent. Host pages implement these tools via WebMCP ' +
-    '(navigator.modelContext) and pass them in the AG-UI RunAgentInput.tools array. ' +
+    '(document.modelContext) and pass them in the AG-UI RunAgentInput.tools array. ' +
     'Tools run in the customer\'s logged-in session, so they only ever see and change that customer\'s account.',
   tools: [
     {

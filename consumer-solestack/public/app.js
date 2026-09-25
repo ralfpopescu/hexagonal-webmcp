@@ -1,4 +1,4 @@
-import { AgentSession, fetchSpec } from 'http://localhost:4000/sdk/webmcp-agui.js';
+import { AgentSession, fetchSpec, modelContext } from 'http://localhost:4000/sdk/webmcp-agui.js';
 import { installTools, statusOf } from './webmcp.js';
 
 const AGENT_URL = 'http://localhost:4000';
@@ -186,7 +186,7 @@ await refresh();
 
 const spec = await fetchSpec(AGENT_URL);
 const conformance = installTools(spec, { refresh, confirmSheet, showOrderCard });
-console.log('[solestack] WebMCP conformance', conformance, navigator.modelContext.listTools());
+console.log('[solestack] WebMCP conformance', conformance, modelContext.listTools());
 
 const session = new AgentSession({
   agentUrl: AGENT_URL,
