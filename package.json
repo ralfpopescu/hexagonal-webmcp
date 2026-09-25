@@ -1,0 +1,17 @@
+{
+  "name": "hexagonal-webmcp",
+  "private": true,
+  "type": "module",
+  "description": "Hexagonal WebMCP: the agent declares its ports as a WebMCP spec; each host implements the adapters.",
+  "scripts": {
+    "start": "node start.js",
+    "agent": "node agent-server/server.js",
+    "maple": "node consumer-maple/server.js",
+    "nordlager": "node consumer-nordlager/server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

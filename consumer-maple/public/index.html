@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>maple & co. · admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">maple <span>&amp;</span> co.</div>
+    <nav><a class="active">Products</a><a>Orders</a><a>Customers</a><a>Analytics</a></nav>
+    <div class="store-pill">🌿 maple-and-co.myshop</div>
+  </header>
+
+  <main class="layout">
+    <section class="catalog">
+      <div class="catalog-head">
+        <div>
+          <h1>Products</h1>
+          <p class="muted">Served by this store's own REST API · <code>/admin/api/products.json</code></p>
+        </div>
+        <div class="legend"><span class="dot dot-missing"></span>needs copy</div>
+      </div>
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <aside class="assistant">
+      <div class="assistant-head">
+        <div>
+          <h2>Copy assistant</h2>
+          <p class="muted" id="agent-status">connecting…</p>
+        </div>
+        <button id="toggle-events" class="ghost" title="Show raw AG-UI events">events</button>
+      </div>
+      <div id="chat" class="chat">
+        <div class="bubble agent">Hi! I can write product descriptions in the maple &amp; co. voice. Every change goes past you first.</div>
+      </div>
+      <div class="suggestions">
+        <button data-prompt="Write descriptions for products that are missing them">✨ Fill in missing descriptions</button>
+      </div>
+      <form id="composer" class="composer">
+        <input id="prompt" placeholder="Ask the assistant…" autocomplete="off" />
+        <button type="submit">Send</button>
+      </form>
+    </aside>
+  </main>
+
+  <div id="events" class="events hidden">
+    <div class="events-head">AG-UI event stream <span class="muted">(from the shared agent endpoint)</span></div>
+    <pre id="event-log"></pre>
+  </div>
+
+  <dialog id="approval" class="approval"></dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

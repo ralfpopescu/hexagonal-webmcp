@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NORDLAGER PIM // SKU MASTER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="bar">
+    <div class="logo">NORDLAGER<span>/</span>PIM</div>
+    <div class="crumbs">SKU MASTER › FASTENERS &amp; DRIVE ELEMENTS</div>
+    <div class="meta">
+      <span>STORE: <b>IndexedDB (local)</b></span>
+      <span>LOCALE: <b>EN / DE</b></span>
+      <button id="reset" class="btn-small">RESET DATA</button>
+    </div>
+  </header>
+
+  <main class="panes">
+    <section class="left">
+      <div class="pane-title">SKU MASTER <span id="count" class="dim"></span></div>
+      <table id="table">
+        <thead><tr><th>SKU</th><th>DESIGNATION</th><th>ETIM</th><th>EN</th><th>STATUS</th><th>REV</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="split">
+        <div class="box">
+          <div class="pane-title">DATASHEET</div>
+          <div id="datasheet" class="datasheet dim">— select a row, or let the agent open one —</div>
+        </div>
+        <div class="box">
+          <div class="pane-title">AUDIT LOG</div>
+          <div id="audit" class="audit"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="pane-title">
+        AGENT CONSOLE
+        <span class="dim" id="agent-status">connecting…</span>
+        <button id="raw" class="btn-small">RAW AG-UI</button>
+      </div>
+      <div id="console" class="console">
+        <div class="line sys">enrichment agent attached via shared AG-UI endpoint. tools resolve locally in this tab.</div>
+        <div class="line sys">try: <span class="kbd">enrich</span> — or type an instruction.</div>
+      </div>
+      <pre id="rawlog" class="rawlog hidden"></pre>
+      <form id="cmd" class="cmd">
+        <span class="prompt">nl&gt;</span>
+        <input id="input" autocomplete="off" spellcheck="false" placeholder="enrich" />
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
